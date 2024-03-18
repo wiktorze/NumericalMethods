@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.38
+# v0.19.37
 
 using Markdown
 using InteractiveUtils
@@ -48,7 +48,7 @@ function readdata(;censor_at = 200)
     👉 will censor for each route at the $censor_at-th shortest drivetime.
         """
     ds = @chain d begin
-        innerjoin(rd["gcap"], on = :gc => :garage_code)
+        innerjoin(rd["gcap"], on = :gc => :garage_code) # joining garage capacity
         rename!(:gc => :garage_code)
 
         sort([:duration, :Route])
@@ -195,7 +195,7 @@ RData = "~1.0.0"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.1"
+julia_version = "1.10.2"
 manifest_format = "2.0"
 project_hash = "fe9f1bc1c7e8c5a8bd665dea4a34dc1d8249e41d"
 

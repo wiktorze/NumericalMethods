@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.38
+# v0.19.37
 
 using Markdown
 using InteractiveUtils
@@ -53,8 +53,30 @@ md"
 
 # ╔═╡ 06219b52-7b43-11eb-3ca9-c334f6d53908
 function data(a=0.5)
-
-	return missing
+	na = 3
+	nc = na + 1
+	ns = 4
+	nss = ns^2
+	e = [2, 0, 0]
+	p = ones(3)
+	z1 = ones(4)
+	z2 = [0.72, 0.92, 1.12, 1.32]
+	z3 = [0.86, 0.96, 1.06, 1.16]
+	zp = hcat(z1,z2,z3)
+	
+	z = zeros(16, 3)
+	
+	for i in 1:4
+	    for j in 1:4
+	        index = (i - 1) * 4 + j
+	        z[index, 1] = z1[1]
+	        z[index, 2] = z2[i]
+	        z[index, 3] = z3[j]
+	    end
+	end
+	π = ones(nss) / nss
+	
+	return Dict(:a => a, :na => na, :nc => nc, :ns => ns, :nss => nss, :e => e, :p => p, :z => z, :zp => zp, :π => π)
 end
 
 # ╔═╡ f07efffc-7cd9-11eb-15aa-338b74552e6a
@@ -66,7 +88,7 @@ md"
 $$\sum_{s=1}^S \pi^s \omega_i z_i^s$$"
 
 # ╔═╡ 03302a44-7cdb-11eb-0e34-73d2add94f8e
-mean_payoff(d) = missing
+mean_payoff(d) =  mean(d[:zp],dims=1)
 
 # ╔═╡ d44226c2-7cda-11eb-1e95-d5c362a2a27c
 md"
@@ -78,7 +100,7 @@ md"
 "
 
 # ╔═╡ 12a088f2-7cdb-11eb-01a6-21baf4b9ba02
-var_payoff(d) = missing
+var_payoff(d) = var(d[:zp],dims=1)
 
 # ╔═╡ 632f1fea-7ce5-11eb-17ab-b5d2e8fa6995
 md"* How do you compare the assets, now that you know their average payoff and variance? Which ones would you choose to invest in, if any?
@@ -98,10 +120,10 @@ _Well, with a uility function of course!_
 "
 
 # ╔═╡ 5124ed8a-7b45-11eb-0984-a944bd9302e0
-u(a,c) = missing
+u(a,c) = -exp(-a*c)
 
 # ╔═╡ 587f244c-7b45-11eb-0238-070d76122af1
-up(a,c) = missing
+up(a,c) = a*(exp(-a*c))
 
 # ╔═╡ a6f5e970-7ce5-11eb-179c-39d4f242c202
 md"
@@ -122,6 +144,15 @@ c_i \geq 0
 **Don't look at the hint! It shows you the solution. First think about it a little while!** it is easy. 😉
 "
 
+# ╔═╡ c78a0e3d-fe92-4fe9-8c2b-da51c9651648
+md"""
+The optimal level of consumption is $c_1 = c_2 = \frac{y}{2}$. If $u$ were linear, the solution will stay the same.
+Let's take $u(c) = \frac{c}{4}$.
+Then $\frac{c}{4} = y - \frac{c}{4}$
+$c = \frac{y}{2}$.
+The solution stays the same
+"""
+
 # ╔═╡ d5555454-7da6-11eb-052e-7313220e3edb
 md"
 
@@ -134,7 +165,17 @@ Let's look at the utility function!
 
 # ╔═╡ f22090dc-7da6-11eb-29dc-51aac7458cb2
 let
+	c_values = 0:0.1:5
+	a_values = [0.2,0.4,0.6,0.8,1.0]
+	
 	plot()
+	for a in a_values
+		u_values=u.(c_values,a)
+		plot!(c_values,u_values,label="a=$a")
+	end
+	xlabel!("c")
+	ylabel!("u(c, a)")
+	title!("Utility Function for Different Values of a")
 end
 
 # ╔═╡ 1910d264-7da8-11eb-1434-fb54dbeda64c
@@ -150,6 +191,12 @@ $$\frac{-u''(c)}{u'(c)}$$
 * What's your interpretation of the number $a$ in this context? How do you expect our investor to behave as $a$ increases?
 
 "
+
+# ╔═╡ fca315d4-d092-4eed-9d5b-62ad815cfdee
+md"""
+This is the formula for constant relative risk aversion. As a increases, the utility function is steeper.
+In this context, a can be interpreted as the constant level of risk aversion for a given wealth. As a increases, we expect a higher level of relative risk aversion for all levels of wealth.
+"""
 
 # ╔═╡ 13b50308-7b46-11eb-034c-c3e2b017e5e9
 md"
@@ -178,13 +225,43 @@ md"
 "
 
 # ╔═╡ 32f9d464-7b46-11eb-274c-0713593fe800
-function obj(x::Vector,grad::Vector,data::Dict)
-	return missing	  
+function obj(x::Vector, grad::Vector, data::Dict)
+    a = data[:a]
+    zp = data[:zp]
+    π = data[:π]
+    # Extract relevant data
+    na = data[:na]
+    nc = data[:nc]
+    ns = data[:ns]
+    nss = data[:nss]
+    e = data[:e]
+	z = data[:z]
+    # Extract choice variables
+    c = x[1]
+    ω = x[2:end]
+   	f = u(a,c) + u.(a, z*ω)'*π
+	grad[1] = up(a, c)
+	for i in 1:na
+		grad[i+1] = sum([up.(a, z*ω)[s]*π[s]*z[s,i] for s in 1:nss])
+	end
+    return f
 end
 
 # ╔═╡ 3af65458-7b46-11eb-2d0c-e5a480ffe003
-function constr(x::Vector,grad::Vector,data::Dict)
-	return missing
+function constr(x::Vector, grad::Vector, data::Dict)
+    # Extract relevant data
+    p = data[:p]
+    e = data[:e]
+    # Extract choice variables
+    c = x[1]
+    ω = x[2:end]
+    # Compute constraint value and gradient
+    g = c + sum(p .* ω) - sum(p .* e)
+	if length(grad) >0 
+	    grad[1] = 1.0
+	    grad[2:end] = p
+	end
+    return g
 end
 
 # ╔═╡ 389f51a0-7cea-11eb-19a3-438cb29fc2e0
@@ -203,13 +280,38 @@ now call the NLopt solver to get the solution.
 "
 	
 
-# ╔═╡ 84893626-7b46-11eb-2e81-dbb07a7afdf6
+# ╔═╡ 742bf3ec-a9bb-44ac-a3be-6e5c624222c4
+function max_NLopt(a = 0.5)
+	
+	d = data(a)
 
+	num_variables = d[:na] + 1
+
+    opt = Opt(:LD_SLSQP, num_variables)
+	opt.lower_bounds = [0.0; fill(-Inf, num_variables -1)]
+	opt.xtol_rel = 1e-4
+
+	function objective_wrapper(x::Vector, grad::Vector)
+        return obj(x, grad, d)
+    end
+	
+    opt.max_objective = objective_wrapper
+	
+	equality_constraint!(opt, (x, g) -> constr(x, g, d), 1e-8)
+
+	x_init = fill(0.2, num_variables)
+
+    (optf, optx, ret) = optimize(opt, x_init)
+
+    return (optf, optx, ret)
+
+
+end
 
 # ╔═╡ 74ada204-7ceb-11eb-0f48-ddc9c1a5fec8
 md"Here is your answer: check the return code! somthing like `:FTOL_REACHED` would be good!"
 
-# ╔═╡ 97f12fa2-7b46-11eb-0183-199ee3de1de1
+# ╔═╡ 504b0b2d-f7ce-4a80-b148-ad4c438f8139
 nlopt_res = max_NLopt()
 
 # ╔═╡ e5233fa0-7b9a-11eb-39cc-c70c0addca97
@@ -234,7 +336,12 @@ $$\sum_{s=1}^S \pi^s u \left( \sum_{i=1}^n \omega_i^* z_i^s \right)$$
 "
 
 # ╔═╡ 2de86fba-7b9b-11eb-379d-0b0f85d9c9a3
-
+function exp_u(a=0.5)
+	d = data(a)
+	nlopt_res = max_NLopt(d[:a])
+    ω = nlopt_res[2][2:end]
+	return u.(d[:a], d[:z]*ω)'*d[:π]
+end
 
 # ╔═╡ f910cfce-7b9b-11eb-3162-9be77eb705ee
 md" 
@@ -254,7 +361,7 @@ I'll then check whether `opt_c(a) ≈ exp_u(a)`!
 # ╔═╡ 8913fa58-7cec-11eb-1bfa-cf84ef627bd2
 function opt_c(a=0.5)
 	nlopt_res = max_NLopt(a)
-	u(nlopt_res[2][1],a)
+	u(a,nlopt_res[2][1])
 end
 
 # ╔═╡ 84b43576-7ced-11eb-37c3-5f6b595f0730
@@ -274,13 +381,32 @@ md"
 * it should return a dict with optimal values `:obj`, `:c` and `:omega`.
 "
 
-# ╔═╡ 0e6842e2-7cf0-11eb-0707-35a4d85c382c
+# ╔═╡ e7b74f8e-ffcc-4c8d-8d67-62d4fa05be79
+function max_JuMP(a=0.5)
+	m = Model(Ipopt.Optimizer)
+	d = data(a)
+	π = d[:π]
+	p = d[:p]
+	e = d[:e]
+	z = d[:z]
+	na = d[:na]
 
+	@variable(m, c)
+	@variable(m, ω[1:na])
 
+	@NLexpression(m, z_dot_ω[i = 1:size(z, 1)], sum(z[i, j] * ω[j] for j in 1:length(ω)))
 
+	@NLobjective(m, Max, u(a,c) + sum(u(a, z_dot_ω[i]) * π[i] for i in 1:size(z, 1)))
+	@constraint(m, c + dot(ω,p) - dot(e,p) <= 0)
 
-# ╔═╡ b771d01e-7da5-11eb-357b-f7d3641e3803
-max_JuMP()
+	JuMP.optimize!(m)
+	s = Dict()
+	s["obj"] = objective_value(m)
+	s["c"] = value(c)
+	s["omegas"] = value.(ω)
+	return s
+end
+
 
 # ╔═╡ 0e41d664-7da6-11eb-3598-bd1ce2944ebd
 md"
@@ -301,6 +427,68 @@ Here are couple of fun things to try, often with minimal effort:
 
 
 "
+
+# ╔═╡ 6bd9598d-817f-45eb-b2b7-d8629e78b178
+function max_JuMP_nosell(a=0.5)
+	m = Model(Ipopt.Optimizer)
+	d = data(a)
+	π = d[:π]
+	p = d[:p]
+	e = d[:e]
+	z = d[:z]
+	na = d[:na]
+
+	@variable(m, c>=0)
+	@variable(m, ω[1:na]>=0)
+
+	@NLexpression(m, z_dot_ω[i = 1:size(z, 1)], sum(z[i, j] * ω[j] for j in 1:length(ω)))
+
+	@NLobjective(m, Max, u(a,c) + sum(u(a, z_dot_ω[i]) * π[i] for i in 1:size(z, 1)))
+	@constraint(m, c + dot(ω,p) - dot(e,p) <= 0)
+
+	JuMP.optimize!(m)
+	s = Dict()
+	s["obj"] = objective_value(m)
+	s["c"] = value(c)
+	s["omegas"] = value.(ω)
+	return s
+end
+
+# ╔═╡ 83812582-d6a1-448f-9630-8560c6833843
+max_JuMP_nosell()
+
+# ╔═╡ ecf9521c-97f7-4645-a111-da5a00dc4586
+u2(a,c) = -a*c^2
+
+# ╔═╡ 3f374470-d174-4bd1-84e5-aa4608fd91c0
+function max_JuMP_u(a=0.5)
+	m = Model(Ipopt.Optimizer)
+	d = data(a)
+	π = d[:π]
+	p = d[:p]
+	e = d[:e]
+	z = d[:z]
+	na = d[:na]
+
+	@variable(m, c)
+	@variable(m, ω[1:na])
+
+	@NLexpression(m, z_dot_ω[i = 1:size(z, 1)], sum(z[i, j] * ω[j] for j in 1:length(ω)))
+
+	@NLobjective(m, Max, u(a,c) + sum(u2(a, z_dot_ω[i]) * π[i] for i in 1:size(z, 1)))
+	@constraint(m, c + dot(ω,p) - dot(e,p) <= 0)
+
+	JuMP.optimize!(m)
+	s = Dict()
+	s["obj"] = objective_value(m)
+	s["c"] = value(c)
+	s["omegas"] = value.(ω)
+	return s
+end
+
+
+# ╔═╡ 9b9ec0d6-e54f-4838-89c6-a1807ba59349
+max_JuMP_u()
 
 # ╔═╡ a1e0ec36-7cee-11eb-3e4c-69ad1c5d018f
 md"Function Library"
@@ -588,7 +776,7 @@ Plots = "~1.24.3"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.10.1"
+julia_version = "1.10.2"
 manifest_format = "2.0"
 project_hash = "04bb2b471a3fcfbf8b7ab45bc4af95d47dc6e60a"
 
@@ -1748,37 +1936,43 @@ version = "1.4.1+0"
 # ╠═587f244c-7b45-11eb-0238-070d76122af1
 # ╟─5bef3e96-7b45-11eb-257a-09f7dbe66aaa
 # ╟─a6f5e970-7ce5-11eb-179c-39d4f242c202
+# ╟─c78a0e3d-fe92-4fe9-8c2b-da51c9651648
 # ╟─f149f7b0-7ce6-11eb-207b-d3830fbf83ef
 # ╟─d5555454-7da6-11eb-052e-7313220e3edb
 # ╠═f22090dc-7da6-11eb-29dc-51aac7458cb2
 # ╟─1910d264-7da8-11eb-1434-fb54dbeda64c
+# ╟─fca315d4-d092-4eed-9d5b-62ad815cfdee
 # ╟─13b50308-7b46-11eb-034c-c3e2b017e5e9
 # ╟─c1a8d1ec-7b99-11eb-02bb-6917b65f33a7
 # ╟─b1e51722-7b99-11eb-33ec-9dc089e8b7fe
 # ╠═32f9d464-7b46-11eb-274c-0713593fe800
 # ╠═3af65458-7b46-11eb-2d0c-e5a480ffe003
 # ╟─389f51a0-7cea-11eb-19a3-438cb29fc2e0
-# ╠═84893626-7b46-11eb-2e81-dbb07a7afdf6
+# ╠═742bf3ec-a9bb-44ac-a3be-6e5c624222c4
 # ╟─241521be-7ceb-11eb-0553-2de70f4c57e9
 # ╟─74ada204-7ceb-11eb-0f48-ddc9c1a5fec8
-# ╠═97f12fa2-7b46-11eb-0183-199ee3de1de1
+# ╠═504b0b2d-f7ce-4a80-b148-ad4c438f8139
 # ╟─e5233fa0-7b9a-11eb-39cc-c70c0addca97
 # ╠═ef08e970-7b9a-11eb-203d-41095002a3b7
 # ╟─aa8e4912-7ceb-11eb-0705-2bf588d303fe
 # ╠═2de86fba-7b9b-11eb-379d-0b0f85d9c9a3
 # ╟─06aba85e-7cec-11eb-075f-23d500eda202
 # ╟─f910cfce-7b9b-11eb-3162-9be77eb705ee
-# ╟─8913fa58-7cec-11eb-1bfa-cf84ef627bd2
+# ╠═8913fa58-7cec-11eb-1bfa-cf84ef627bd2
 # ╟─cac793ec-7cec-11eb-12a0-b7caf963d07f
 # ╟─84b43576-7ced-11eb-37c3-5f6b595f0730
 # ╟─0a5c81f2-7b4c-11eb-2a96-7163671eed67
 # ╟─f078be5a-7b4c-11eb-3f03-138505242d43
-# ╠═0e6842e2-7cf0-11eb-0707-35a4d85c382c
 # ╟─316f5b3e-7da6-11eb-1d30-5f7a350de422
-# ╠═b771d01e-7da5-11eb-357b-f7d3641e3803
+# ╠═e7b74f8e-ffcc-4c8d-8d67-62d4fa05be79
 # ╟─0e41d664-7da6-11eb-3598-bd1ce2944ebd
 # ╟─19d9f3f8-7da6-11eb-169c-9765c55cfac6
 # ╟─7cc76266-7da6-11eb-3c61-6d4b7206c46c
+# ╠═6bd9598d-817f-45eb-b2b7-d8629e78b178
+# ╠═83812582-d6a1-448f-9630-8560c6833843
+# ╠═ecf9521c-97f7-4645-a111-da5a00dc4586
+# ╠═3f374470-d174-4bd1-84e5-aa4608fd91c0
+# ╠═9b9ec0d6-e54f-4838-89c6-a1807ba59349
 # ╟─a1e0ec36-7cee-11eb-3e4c-69ad1c5d018f
 # ╟─061b765e-7b4c-11eb-337a-61f8783875bb
 # ╟─13d41f9e-7cf0-11eb-1e01-f1ddcbe01b8a
