@@ -223,7 +223,7 @@ function backwards(grid, nperiods)
 	points = length(grid)
 	V = zeros(nperiods,points)
 	a = zeros(nperiods,points)
-	V[end,:] = sqrt.(grid)  # from before: final period
+	V[end,:] = log.(grid)  # from before: final period
 	a[end,:] = collect(grid)
 
 	for it in (nperiods-1):-1:1
@@ -246,11 +246,11 @@ md"
 begin
 	# final period T
 	points = 500
-	lowR = 0.0001
-	# highR = 10.0 # slider below
-	Rspace = range(lowR, stop = highR, length = points)
+	lowR = 0.01
+	#highR = 10.0 # slider below
+	Rspace = range(lowR, highR, length = points)
 	aT = Rspace # consume whatever is left
-	VT = sqrt.(aT)  # utility of that consumption
+	VT = log.(aT)  # utility of that consumption
 end
 
 # ╔═╡ 9467efca-8722-11eb-12ff-7f5446bcf618
@@ -278,7 +278,7 @@ begin
                 w[ia] = -Inf
             else
 				rprime = ir - ia  # state transition
-                w[ia] = sqrt(achoice) + VT[rprime]   # value of that achoice
+                w[ia] = log(achoice) + VT[rprime]   # value of that achoice
             end
         end
         # find best action

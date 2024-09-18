@@ -545,9 +545,6 @@ function eqmfind(;A = 1,N = 1, α = 0.33, β = 0.96, δ = 0.05)
  	# Create an instance of Household
 	am = Household(β = β, a_max = 20.0)
 
-	# Create a grid of r values at which to compute demand and supply of capital
-	r_vals = range(0.005, 0.04, length = 20)
-
 	ex_supply(r) = next_K_stock(am, r, fp ) - Kd(r,fp)
 
 	res = fzero(ex_supply, 0.005,0.04)
